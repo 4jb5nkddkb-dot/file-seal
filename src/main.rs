@@ -11,7 +11,11 @@ use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 #[derive(Parser, Debug)]
-#[command(name = "file-seal", version, about = "Local file integrity seals (SHA-256 + ledger)")]
+#[command(
+    name = "file-seal",
+    version,
+    about = "Local file integrity seals (SHA-256 + ledger)"
+)]
 struct Cli {
     /// Override ledger path (default: ~/.local/share/file-seal/seals.jsonl)
     #[arg(long, global = true, env = "FILE_SEAL_LEDGER")]
@@ -104,7 +108,8 @@ fn resolve_ledger(override_path: Option<&Path>) -> Result<PathBuf> {
 }
 
 fn hash_file(path: &Path) -> Result<(String, u64)> {
-    let mut file = File::open(path).map_err(|e| SealError::Msg(format!("open {}: {e}", path.display())))?;
+    let mut file =
+        File::open(path).map_err(|e| SealError::Msg(format!("open {}: {e}", path.display())))?;
     let mut hasher = Sha256::new();
     let n = std::io::copy(&mut file, &mut hasher)
         .map_err(|e| SealError::Msg(format!("read {}: {e}", path.display())))?;
@@ -126,10 +131,7 @@ fn append_record(ledger: &Path, rec: &SealRecord) -> Result<()> {
     if let Some(parent) = ledger.parent() {
         fs::create_dir_all(parent)?;
     }
-    let mut f = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(ledger)?;
+    let mut f = OpenOptions::new().create(true).append(true).open(ledger)?;
     let line = serde_json::to_string(rec)?;
     writeln!(f, "{line}")?;
     Ok(())
@@ -219,7 +221,10 @@ fn cmd_list(ledger: &Path, path_filter: Option<&Path>, limit: usize) -> Result<(
         println!("(no seals in {})", ledger.display());
         return Ok(());
     }
-    println!("{:<20}  {:<14}  {:>10}  {}", "time", "sha256", "size", "path");
+    println!(
+        "{:<20}  {:<14}  {:>10}  path",
+        "time", "sha256", "size"
+    );
     for r in records.iter().take(n) {
         let t = r.ts.format("%Y-%m-%d %H:%M:%S").to_string();
         println!(
