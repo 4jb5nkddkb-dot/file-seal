@@ -104,13 +104,10 @@ fn resolve_ledger(override_path: Option<&Path>) -> Result<PathBuf> {
 }
 
 fn hash_file(path: &Path) -> Result<(String, u64)> {
-    let mut file = File::open(path).map_err(|e| {
-        SealError::Msg(format!("open {}: {e}", path.display()))
-    })?;
+    let mut file = File::open(path).map_err(|e| SealError::Msg(format!("open {}: {e}", path.display())))?;
     let mut hasher = Sha256::new();
-    let n = std::io::copy(&mut file, &mut hasher).map_err(|e| {
-        SealError::Msg(format!("read {}: {e}", path.display()))
-    })?;
+    let n = std::io::copy(&mut file, &mut hasher)
+        .map_err(|e| SealError::Msg(format!("read {}: {e}", path.display())))?;
     let digest = hasher.finalize();
     Ok((hex::encode(digest), n))
 }
@@ -121,7 +118,6 @@ fn canonical_path(path: &Path) -> Result<String> {
     } else {
         env::current_dir()?.join(path)
     };
-    // Prefer canonicalize when file exists; fall back to cleaned absolute.
     let resolved = fs::canonicalize(&abs).unwrap_or(abs);
     Ok(resolved.display().to_string())
 }
@@ -152,24 +148,20 @@ fn read_all(ledger: &Path) -> Result<Vec<SealRecord>> {
         if t.is_empty() {
             continue;
         }
-        match serde_json::from_str::<SealRecord>(t) {
-            Ok(r) => out.push(r),
-            Err(_) => continue,
+        if let Ok(r) = serde_json::from_str::<SealRecord>(t) {
+            out.push(r);
         }
     }
     Ok(out)
 }
 
-fn latest_for_path(records: &[SealRecord], path_key: &str) -> Option<&SealRecord> {
+fn latest_for_path<'a>(records: &'a [SealRecord], path_key: &str) -> Option<&'a SealRecord> {
     records.iter().rev().find(|r| r.path == path_key)
 }
 
 fn cmd_seal(ledger: &Path, path: &Path, message: Option<String>) -> Result<()> {
     if !path.is_file() {
-        return Err(SealError::Msg(format!(
-            "not a file: {}",
-            path.display()
-        )));
+        return Err(SealError::Msg(format!("not a file: {}", path.display())));
     }
     let (sha256, size) = hash_file(path)?;
     let path_key = canonical_path(path)?;
@@ -191,10 +183,7 @@ fn cmd_seal(ledger: &Path, path: &Path, message: Option<String>) -> Result<()> {
 
 fn cmd_verify(ledger: &Path, path: &Path) -> Result<()> {
     if !path.is_file() {
-        return Err(SealError::Msg(format!(
-            "not a file: {}",
-            path.display()
-        )));
+        return Err(SealError::Msg(format!("not a file: {}", path.display())));
     }
     let path_key = canonical_path(path)?;
     let records = read_all(ledger)?;
@@ -224,7 +213,7 @@ fn cmd_list(ledger: &Path, path_filter: Option<&Path>, limit: usize) -> Result<(
         let key = canonical_path(p).unwrap_or_else(|_| p.display().to_string());
         records.retain(|r| r.path == key || r.path.ends_with(&key));
     }
-    records.reverse(); // newest first
+    records.reverse();
     let n = records.len().min(limit);
     if n == 0 {
         println!("(no seals in {})", ledger.display());
