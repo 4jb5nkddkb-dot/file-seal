@@ -89,7 +89,11 @@ fn main() {
                 eprintln!("hint  run: file-seal seal <path>");
                 std::process::exit(2);
             }
-            SealError::HashMismatch { path, recorded, current } => {
+            SealError::HashMismatch {
+                path,
+                recorded,
+                current,
+            } => {
                 eprintln!("FAIL  hash mismatch");
                 eprintln!("path     {path}");
                 eprintln!("recorded {recorded}");
