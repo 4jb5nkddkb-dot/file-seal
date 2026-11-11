@@ -59,6 +59,14 @@ enum SealError {
     Io(#[from] std::io::Error),
     #[error(transparent)]
     Json(#[from] serde_json::Error),
+    #[error("no seal found for {0}")]
+    NoSeal(String),
+    #[error("hash mismatch for {path}: recorded {recorded}, current {current}")]
+    HashMismatch {
+        path: String,
+        recorded: String,
+        current: String,
+    },
 }
 
 type Result<T> = std::result::Result<T, SealError>;
@@ -75,8 +83,24 @@ struct SealRecord {
 
 fn main() {
     if let Err(e) = run() {
-        eprintln!("error: {e}");
-        std::process::exit(1);
+        match e {
+            SealError::NoSeal(path) => {
+                eprintln!("FAIL  no seal found for {path}");
+                eprintln!("hint  run: file-seal seal <path>");
+                std::process::exit(2);
+            }
+            SealError::HashMismatch { path, recorded, current } => {
+                eprintln!("FAIL  hash mismatch");
+                eprintln!("path     {path}");
+                eprintln!("recorded {recorded}");
+                eprintln!("current  {current}");
+                std::process::exit(3);
+            }
+            _ => {
+                eprintln!("error: {e}");
+                std::process::exit(1);
+            }
+        }
     }
 }
 
@@ -190,9 +214,7 @@ fn cmd_verify(ledger: &Path, path: &Path) -> Result<()> {
     let path_key = canonical_path(path)?;
     let records = read_all(ledger)?;
     let Some(prev) = latest_for_path(&records, &path_key) else {
-        println!("FAIL  no seal found for {path_key}");
-        println!("hint  run: file-seal seal {}", path.display());
-        std::process::exit(2);
+        return Err(SealError::NoSeal(path_key));
     };
     let (sha256, size) = hash_file(path)?;
     if sha256 == prev.sha256 && size == prev.size {
@@ -201,12 +223,11 @@ fn cmd_verify(ledger: &Path, path: &Path) -> Result<()> {
         println!("path   {path_key}");
         return Ok(());
     }
-    println!("FAIL  hash mismatch");
-    println!("path     {path_key}");
-    println!("recorded {}", short_hash(&prev.sha256));
-    println!("current  {}", short_hash(&sha256));
-    println!("sealed   {}", prev.ts.to_rfc3339());
-    std::process::exit(3);
+    Err(SealError::HashMismatch {
+        path: path_key,
+        recorded: short_hash(&prev.sha256),
+        current: short_hash(&sha256),
+    })
 }
 
 fn cmd_list(ledger: &Path, path_filter: Option<&Path>, limit: usize) -> Result<()> {
@@ -268,8 +289,8 @@ mod tests {
         cmd_seal(&ledger, &file, Some("test note".into())).unwrap();
 
         // Verify should succeed
-        // Note: cmd_verify exits on fail, so we just check no panic for success path
-        // For full test we'd refactor exit to return codes, but for now basic.
+        cmd_verify(&ledger, &file).unwrap();
+
         assert!(ledger.exists());
         let recs = read_all(&ledger).unwrap();
         assert_eq!(recs.len(), 1);
