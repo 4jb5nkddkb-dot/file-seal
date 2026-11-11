@@ -243,7 +243,7 @@ fn short_hash(h: &str) -> String {
     if h.len() <= 16 {
         h.to_string()
     } else {
-        format!("{}\u2026{}", &h[..8], &h[h.len() - 4..])
+        format!("{}\u{2026}{}", &h[..8], &h[h.len() - 4..])
     }
 }
 
@@ -282,6 +282,6 @@ mod tests {
         assert_eq!(short_hash("abc"), "abc");
         assert_eq!(short_hash("1234567890abcdef"), "1234567890abcdef");
         let long = "1234567890abcdef1234567890abcdef";
-        assert!(short_hash(long).contains('\u2026'));
+        assert!(short_hash(long).contains('\u{2026}'));
     }
 }
