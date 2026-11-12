@@ -11,12 +11,12 @@ fn setup_cjk_fonts(ctx: &egui::Context) {
 
     // Try common Windows CJK fonts so Chinese + emoji render correctly
     let candidates = [
-        r"C:\Windows\Fonts\msyh.ttc",      // Microsoft YaHei
+        r"C:\Windows\Fonts\msyh.ttc", // Microsoft YaHei
         r"C:\Windows\Fonts\msyhbd.ttc",
-        r"C:\Windows\Fonts\simhei.ttf",    // SimHei
-        r"C:\Windows\Fonts\simsun.ttc",    // SimSun
-        r"C:\Windows\Fonts\msjh.ttc",      // Microsoft JhengHei
-        r"C:\Windows\Fonts\seguiemj.ttf",  // Segoe UI Emoji
+        r"C:\Windows\Fonts\simhei.ttf",   // SimHei
+        r"C:\Windows\Fonts\simsun.ttc",   // SimSun
+        r"C:\Windows\Fonts\msjh.ttc",     // Microsoft JhengHei
+        r"C:\Windows\Fonts\seguiemj.ttf", // Segoe UI Emoji
         r"C:\Windows\Fonts\segoeui.ttf",
     ];
 
@@ -28,10 +28,9 @@ fn setup_cjk_fonts(ctx: &egui::Context) {
             } else {
                 "cjk_font"
             };
-            fonts.font_data.insert(
-                name.to_owned(),
-                egui::FontData::from_owned(data),
-            );
+            fonts
+                .font_data
+                .insert(name.to_owned(), egui::FontData::from_owned(data));
             // Prefer CJK font for proportional text
             if name == "cjk_font" {
                 fonts
@@ -206,18 +205,14 @@ impl FileSealApp {
     }
 
     fn do_seal_one(&mut self, path: &Path) -> String {
-        match file_seal::seal_file(
-            &self.ledger_path,
-            path,
-            {
-                let m = self.seal_message.trim();
-                if m.is_empty() {
-                    None
-                } else {
-                    Some(m.to_string())
-                }
-            },
-        ) {
+        match file_seal::seal_file(&self.ledger_path, path, {
+            let m = self.seal_message.trim();
+            if m.is_empty() {
+                None
+            } else {
+                Some(m.to_string())
+            }
+        }) {
             Ok(rec) => {
                 let name = Path::new(&rec.path)
                     .file_name()
@@ -236,10 +231,7 @@ impl FileSealApp {
     }
 
     fn do_verify_one(&mut self, path: &Path) -> (bool, String) {
-        let name = path
-            .file_name()
-            .and_then(|s| s.to_str())
-            .unwrap_or("?");
+        let name = path.file_name().and_then(|s| s.to_str()).unwrap_or("?");
         match file_seal::verify_file(&self.ledger_path, path) {
             Ok(prev) => (
                 true,
@@ -255,7 +247,9 @@ impl FileSealApp {
                 false,
                 format!("⚠️ {} {}  未找到封印，请先封印", file_icon(path), name),
             ),
-            Err(SealError::HashMismatch { recorded, current, .. }) => (
+            Err(SealError::HashMismatch {
+                recorded, current, ..
+            }) => (
                 false,
                 format!(
                     "❌ {} {}  已被修改  记录:{}  当前:{}",
@@ -326,7 +320,11 @@ impl FileSealApp {
     fn ui_dashboard(&mut self, ui: &mut egui::Ui) {
         ui.heading("仪表盘");
         ui.add_space(8.0);
-        ui.label(RichText::new("提示：可直接把文件拖放到窗口，自动进入封印页面").weak().small());
+        ui.label(
+            RichText::new("提示：可直接把文件拖放到窗口，自动进入封印页面")
+                .weak()
+                .small(),
+        );
         ui.add_space(12.0);
 
         ui.horizontal(|ui| {
@@ -362,41 +360,39 @@ impl FileSealApp {
         ui.add_space(8.0);
 
         if self.records.is_empty() {
-            ui.label(
-                RichText::new("暂无封印记录。去「封印文件」页面或直接拖放文件进来。").weak(),
-            );
+            ui.label(RichText::new("暂无封印记录。去「封印文件」页面或直接拖放文件进来。").weak());
         } else {
-            egui::ScrollArea::vertical().max_height(360.0).show(ui, |ui| {
-                for rec in self.records.iter().take(15) {
-                    ui.group(|ui| {
-                        ui.horizontal(|ui| {
-                            ui.label(
-                                RichText::new(rec.ts.format("%m-%d %H:%M").to_string())
-                                    .monospace()
-                                    .weak(),
-                            );
-                            ui.label(file_seal::short_hash(&rec.sha256));
-                            let p = Path::new(&rec.path);
-                            let icon = file_icon(p);
-                            let name = p
-                                .file_name()
-                                .and_then(|s| s.to_str())
-                                .unwrap_or(&rec.path);
-                            ui.label(RichText::new(format!("{icon} {name}")).strong());
-                            ui.with_layout(
-                                egui::Layout::right_to_left(egui::Align::Center),
-                                |ui| {
-                                    ui.label(format!("{} B", rec.size));
-                                },
-                            );
+            egui::ScrollArea::vertical()
+                .max_height(360.0)
+                .show(ui, |ui| {
+                    for rec in self.records.iter().take(15) {
+                        ui.group(|ui| {
+                            ui.horizontal(|ui| {
+                                ui.label(
+                                    RichText::new(rec.ts.format("%m-%d %H:%M").to_string())
+                                        .monospace()
+                                        .weak(),
+                                );
+                                ui.label(file_seal::short_hash(&rec.sha256));
+                                let p = Path::new(&rec.path);
+                                let icon = file_icon(p);
+                                let name =
+                                    p.file_name().and_then(|s| s.to_str()).unwrap_or(&rec.path);
+                                ui.label(RichText::new(format!("{icon} {name}")).strong());
+                                ui.with_layout(
+                                    egui::Layout::right_to_left(egui::Align::Center),
+                                    |ui| {
+                                        ui.label(format!("{} B", rec.size));
+                                    },
+                                );
+                            });
+                            if let Some(ref m) = rec.message {
+                                ui.label(RichText::new(format!("备注: {m}")).small().italics());
+                            }
                         });
-                        if let Some(ref m) = rec.message {
-                            ui.label(RichText::new(format!("备注: {m}")).small().italics());
-                        }
-                    });
-                    ui.add_space(4.0);
-                }
-            });
+                        ui.add_space(4.0);
+                    }
+                });
         }
 
         ui.add_space(16.0);
@@ -428,10 +424,7 @@ impl FileSealApp {
     fn ui_seal(&mut self, ui: &mut egui::Ui) {
         ui.heading("封印文件 / 图片 / 视频");
         ui.label(
-            RichText::new(
-                "支持任意文件类型。可多选、选文件夹，或直接拖放文件到窗口。",
-            )
-            .weak(),
+            RichText::new("支持任意文件类型。可多选、选文件夹，或直接拖放文件到窗口。").weak(),
         );
         ui.add_space(12.0);
 
@@ -479,19 +472,27 @@ impl FileSealApp {
 
         if !self.pending_paths.is_empty() {
             ui.group(|ui| {
-                ui.label(format!("待封印 ({} 个) — 支持拖放继续添加:", self.pending_paths.len()));
-                egui::ScrollArea::vertical().max_height(140.0).show(ui, |ui| {
-                    for p in &self.pending_paths {
-                        let name = p.file_name().and_then(|s| s.to_str()).unwrap_or("?");
-                        let size = std::fs::metadata(p).map(|m| m.len()).unwrap_or(0);
-                        ui.label(format!("{} {}  ({} bytes)", file_icon(p), name, size));
-                    }
-                });
+                ui.label(format!(
+                    "待封印 ({} 个) — 支持拖放继续添加:",
+                    self.pending_paths.len()
+                ));
+                egui::ScrollArea::vertical()
+                    .max_height(140.0)
+                    .show(ui, |ui| {
+                        for p in &self.pending_paths {
+                            let name = p.file_name().and_then(|s| s.to_str()).unwrap_or("?");
+                            let size = std::fs::metadata(p).map(|m| m.len()).unwrap_or(0);
+                            ui.label(format!("{} {}  ({} bytes)", file_icon(p), name, size));
+                        }
+                    });
             });
 
             ui.add_space(8.0);
             if ui
-                .button(RichText::new(format!("🔒 开始封印 ({} 个)", self.pending_paths.len())).strong())
+                .button(
+                    RichText::new(format!("🔒 开始封印 ({} 个)", self.pending_paths.len()))
+                        .strong(),
+                )
                 .clicked()
             {
                 let paths = self.pending_paths.clone();
@@ -515,19 +516,19 @@ impl FileSealApp {
         if !self.last_seal_results.is_empty() {
             ui.add_space(16.0);
             ui.heading("本批结果");
-            egui::ScrollArea::vertical().max_height(200.0).show(ui, |ui| {
-                for r in &self.last_seal_results {
-                    ui.label(RichText::new(r).monospace().small());
-                }
-            });
+            egui::ScrollArea::vertical()
+                .max_height(200.0)
+                .show(ui, |ui| {
+                    for r in &self.last_seal_results {
+                        ui.label(RichText::new(r).monospace().small());
+                    }
+                });
         }
     }
 
     fn ui_verify(&mut self, ui: &mut egui::Ui) {
         ui.heading("验证文件完整性");
-        ui.label(
-            RichText::new("检查文件是否与封印时完全一致。支持批量验证与拖放。").weak(),
-        );
+        ui.label(RichText::new("检查文件是否与封印时完全一致。支持批量验证与拖放。").weak());
         ui.add_space(12.0);
 
         ui.horizontal(|ui| {
@@ -562,7 +563,9 @@ impl FileSealApp {
 
             ui.add_space(8.0);
             if ui
-                .button(RichText::new(format!("✅ 立即验证 ({} 个)", self.verify_paths.len())).strong())
+                .button(
+                    RichText::new(format!("✅ 立即验证 ({} 个)", self.verify_paths.len())).strong(),
+                )
                 .clicked()
             {
                 let paths = self.verify_paths.clone();
@@ -583,19 +586,25 @@ impl FileSealApp {
 
         if !self.last_verify_results.is_empty() {
             ui.add_space(16.0);
-            let pass_count = self.last_verify_results.iter().filter(|(ok, _)| *ok).count();
+            let pass_count = self
+                .last_verify_results
+                .iter()
+                .filter(|(ok, _)| *ok)
+                .count();
             let total = self.last_verify_results.len();
             ui.heading(format!("本批结果：通过 {} / {}", pass_count, total));
-            egui::ScrollArea::vertical().max_height(220.0).show(ui, |ui| {
-                for (ok, msg) in &self.last_verify_results {
-                    let color = if *ok {
-                        Color32::from_rgb(100, 220, 140)
-                    } else {
-                        Color32::from_rgb(255, 140, 120)
-                    };
-                    ui.colored_label(color, RichText::new(msg).monospace().small());
-                }
-            });
+            egui::ScrollArea::vertical()
+                .max_height(220.0)
+                .show(ui, |ui| {
+                    for (ok, msg) in &self.last_verify_results {
+                        let color = if *ok {
+                            Color32::from_rgb(100, 220, 140)
+                        } else {
+                            Color32::from_rgb(255, 140, 120)
+                        };
+                        ui.colored_label(color, RichText::new(msg).monospace().small());
+                    }
+                });
         }
     }
 
@@ -655,10 +664,7 @@ impl FileSealApp {
                     );
                     ui.label(RichText::new(format!("{:>8}", rec.size)).small());
                     let p = Path::new(&rec.path);
-                    let name = p
-                        .file_name()
-                        .and_then(|s| s.to_str())
-                        .unwrap_or(&rec.path);
+                    let name = p.file_name().and_then(|s| s.to_str()).unwrap_or(&rec.path);
                     ui.label(RichText::new(format!("{} {}", file_icon(p), name)).small());
                 });
                 if let Some(ref m) = rec.message {
