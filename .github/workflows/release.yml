@@ -28,20 +28,21 @@ jobs:
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
 
-      - name: Build GUI (release)
+      - name: Build CLI (always)
+        run: cargo build --release --bin file-seal --features cli
+
+      - name: Build GUI (best effort)
+        continue-on-error: true
         run: cargo build --release --bin file-seal-gui --features gui
         env:
           CARGO_TERM_COLOR: always
-
-      - name: Build CLI (release)
-        run: cargo build --release --bin file-seal --features cli
 
       - name: Prepare artifacts
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist
-          Copy-Item target/release/file-seal-gui.exe dist/file-seal-gui.exe
-          Copy-Item target/release/file-seal.exe dist/file-seal.exe
+          if (Test-Path target/release/file-seal.exe) { Copy-Item target/release/file-seal.exe dist/ }
+          if (Test-Path target/release/file-seal-gui.exe) { Copy-Item target/release/file-seal-gui.exe dist/ }
           Get-ChildItem dist
 
       - name: Upload Windows artifacts
@@ -69,16 +70,18 @@ jobs:
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
 
-      - name: Build GUI + CLI
-        run: |
-          cargo build --release --bin file-seal-gui --features gui
-          cargo build --release --bin file-seal --features cli
+      - name: Build CLI (always)
+        run: cargo build --release --bin file-seal --features cli
+
+      - name: Build GUI (best effort)
+        continue-on-error: true
+        run: cargo build --release --bin file-seal-gui --features gui
 
       - name: Prepare artifacts
         run: |
           mkdir -p dist
-          cp target/release/file-seal-gui dist/
-          cp target/release/file-seal dist/
+          [ -f target/release/file-seal ] && cp target/release/file-seal dist/
+          [ -f target/release/file-seal-gui ] && cp target/release/file-seal-gui dist/
           ls -la dist/
 
       - name: Upload Linux artifacts
@@ -107,12 +110,12 @@ jobs:
           body: |
             ## File Seal Desktop Product
             
-            - **file-seal-gui.exe** (Windows) / **file-seal-gui** (Linux)：桌面应用，双击即用
-            - **file-seal.exe** / **file-seal**：命令行版
+            - **file-seal-gui.exe** (Windows) / **file-seal-gui** (Linux)：桌面应用（如果本构建成功）
+            - **file-seal.exe** / **file-seal**：命令行版（始终包含）
             
             ### 使用
-            1. 下载对应平台的 `file-seal-gui` 可执行文件
-            2. 双击运行，出现仪表盘界面
+            1. 下载对应平台的可执行文件
+            2. 双击运行 GUI 版出现仪表盘界面
             3. 在「封印文件」中添加图片/视频/任意文件
             4. 账本路径可在「设置」中自定义（独立保存）
             
