@@ -303,6 +303,45 @@ mod tests {
     }
 
     #[test]
+    fn test_hash_mismatch() {
+        let (dir, ledger) = setup();
+        let file = dir.path().join("test.txt");
+        fs::write(&file, b"hello world").unwrap();
+        cmd_seal(&ledger, &file, None).unwrap();
+
+        // Modify the file
+        fs::write(&file, b"hello universe").unwrap();
+        let result = cmd_verify(&ledger, &file);
+        assert!(result.is_err());
+        if let Err(SealError::HashMismatch { .. }) = result {
+            // expected
+        } else {
+            panic!("expected HashMismatch");
+        }
+    }
+
+    #[test]
+    fn test_no_seal() {
+        let (dir, ledger) = setup();
+        let file = dir.path().join("test.txt");
+        fs::write(&file, b"hello").unwrap();
+        let result = cmd_verify(&ledger, &file);
+        assert!(matches!(result, Err(SealError::NoSeal(_))));
+    }
+
+    #[test]
+    fn test_list() {
+        let (dir, ledger) = setup();
+        let file = dir.path().join("test.txt");
+        fs::write(&file, b"content").unwrap();
+        cmd_seal(&ledger, &file, Some("note".into())).unwrap();
+
+        // Just ensure it doesn't panic
+        cmd_list(&ledger, None, 10).unwrap();
+        cmd_list(&ledger, Some(&file), 10).unwrap();
+    }
+
+    #[test]
     fn test_short_hash() {
         assert_eq!(short_hash("abc"), "abc");
         assert_eq!(short_hash("1234567890abcdef"), "1234567890abcdef");
