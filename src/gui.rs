@@ -6,20 +6,21 @@ use std::path::{Path, PathBuf};
 
 fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
-        initial_window_size: Some(egui::vec2(1100.0, 720.0)),
-        min_window_size: Some(egui::vec2(800.0, 520.0)),
-        drag_and_drop_support: true,
+        viewport: egui::ViewportBuilder::default()
+            .with_inner_size([1100.0, 720.0])
+            .with_min_inner_size([800.0, 520.0])
+            .with_title("File Seal — 本地文件完整性鉴定"),
         ..Default::default()
     };
     eframe::run_native(
-        "File Seal — 本地文件完整性鉴定",
+        "File Seal",
         options,
         Box::new(|cc| {
             let mut visuals = egui::Visuals::dark();
             visuals.window_rounding = 8.0.into();
             visuals.panel_fill = Color32::from_rgb(18, 18, 24);
             cc.egui_ctx.set_visuals(visuals);
-            Box::new(FileSealApp::new(cc))
+            Ok(Box::new(FileSealApp::new(cc)))
         }),
     )
 }
@@ -656,7 +657,7 @@ impl FileSealApp {
         ui.add_space(24.0);
         ui.separator();
         ui.label(
-            RichText::new("File Seal v0.2.0  ·  MIT License  ·  本地优先")
+            RichText::new("File Seal v0.2.1  ·  MIT License  ·  本地优先")
                 .weak()
                 .small(),
         );
