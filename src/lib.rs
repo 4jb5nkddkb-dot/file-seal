@@ -51,7 +51,9 @@ pub fn resolve_ledger(override_path: Option<&Path>) -> Result<PathBuf> {
         .map(PathBuf::from)
         .or_else(|| env::var_os("HOME").map(|h| PathBuf::from(h).join(".local/share")))
         .or_else(|| env::var_os("LOCALAPPDATA").map(PathBuf::from)) // Windows
-        .ok_or_else(|| SealError::Msg("cannot resolve data dir (set HOME or provide ledger path)".into()))?;
+        .ok_or_else(|| {
+            SealError::Msg("cannot resolve data dir (set HOME or provide ledger path)".into())
+        })?;
     let dir = base.join("file-seal");
     fs::create_dir_all(&dir)?;
     Ok(dir.join("seals.jsonl"))
@@ -148,7 +150,11 @@ pub fn verify_file(ledger: &Path, path: &Path) -> Result<SealRecord> {
     })
 }
 
-pub fn list_seals(ledger: &Path, path_filter: Option<&Path>, limit: usize) -> Result<Vec<SealRecord>> {
+pub fn list_seals(
+    ledger: &Path,
+    path_filter: Option<&Path>,
+    limit: usize,
+) -> Result<Vec<SealRecord>> {
     let mut records = read_all(ledger)?;
     if let Some(p) = path_filter {
         let key = canonical_path(p).unwrap_or_else(|_| p.display().to_string());
@@ -163,7 +169,7 @@ pub fn short_hash(h: &str) -> String {
     if h.len() <= 16 {
         h.to_string()
     } else {
-        format!("{}…{}", &h[..8], &h[h.len() - 4..])
+        format!("{}\u2026{}", &h[..8], &h[h.len() - 4..])
     }
 }
 
