@@ -169,7 +169,7 @@ pub fn short_hash(h: &str) -> String {
     if h.len() <= 16 {
         h.to_string()
     } else {
-        format!("{}\u2026{}", &h[..8], &h[h.len() - 4..])
+        format!("{}\u{2026}{}", &h[..8], &h[h.len() - 4..])
     }
 }
 
