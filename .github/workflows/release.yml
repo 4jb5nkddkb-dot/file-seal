@@ -26,26 +26,42 @@ jobs:
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
 
-      - name: Build CLI (release)
+      - name: Build CLI
         run: cargo build --release --bin file-seal --features cli
+
+      - name: Build GUI
+        continue-on-error: true
+        run: cargo build --release --bin file-seal-gui --features gui
+        env:
+          CARGO_TERM_COLOR: always
 
       - name: Prepare artifacts
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist
-          Copy-Item target/release/file-seal.exe dist/file-seal.exe
-          Get-ChildItem dist
+          if (Test-Path target/release/file-seal.exe) { Copy-Item target/release/file-seal.exe dist/ }
+          if (Test-Path target/release/file-seal-gui.exe) { Copy-Item target/release/file-seal-gui.exe dist/ }
+          Get-ChildItem dist -ErrorAction SilentlyContinue
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
           name: file-seal-windows
           path: dist/*
+          if-no-files-found: warn
 
   build-linux:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install system deps for egui
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
+            libxkbcommon-dev libssl-dev libgl1-mesa-dev libx11-dev libxcursor-dev \
+            libxrandr-dev libxi-dev libwayland-dev libxkbcommon-x11-dev pkg-config
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -53,20 +69,26 @@ jobs:
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
 
-      - name: Build CLI (release)
+      - name: Build CLI
         run: cargo build --release --bin file-seal --features cli
+
+      - name: Build GUI
+        continue-on-error: true
+        run: cargo build --release --bin file-seal-gui --features gui
 
       - name: Prepare artifacts
         run: |
           mkdir -p dist
-          cp target/release/file-seal dist/
-          ls -la dist/
+          [ -f target/release/file-seal ] && cp target/release/file-seal dist/
+          [ -f target/release/file-seal-gui ] && cp target/release/file-seal-gui dist/
+          ls -la dist/ || true
 
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
           name: file-seal-linux
           path: dist/*
+          if-no-files-found: warn
 
   release:
     needs: [build-windows, build-linux]
@@ -86,21 +108,16 @@ jobs:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           name: File Seal ${{ github.event.inputs.tag || github.ref_name }}
           body: |
-            ## File Seal
+            ## File Seal Desktop Product
             
+            - **file-seal-gui.exe** (Windows)：桌面应用（如果构建成功）
             - **file-seal.exe** (Windows) / **file-seal** (Linux)：命令行版
             
-            GUI 桌面版目前建议本地编译：
-            ```bash
-            cargo build --release --bin file-seal-gui --features gui
-            ```
-            
-            ### 使用（CLI）
-            ```bash
-            file-seal seal ./file.pdf
-            file-seal verify ./file.pdf
-            file-seal list
-            ```
+            ### 使用
+            1. 下载对应平台的可执行文件
+            2. 双击运行 GUI 版出现仪表盘界面
+            3. 在「封印文件」中添加图片/视频/任意文件
+            4. 账本路径可在「设置」中自定义（独立保存）
             
             离线、本地优先、无上传。
           files: |
