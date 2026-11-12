@@ -4,6 +4,62 @@ use eframe::egui::{self, Color32, RichText};
 use file_seal::{self, SealError, SealRecord};
 use std::path::{Path, PathBuf};
 
+fn setup_cjk_fonts(ctx: &egui::Context) {
+    let mut fonts = egui::FontDefinitions::default();
+
+    // Try common Windows CJK fonts so Chinese + emoji render correctly
+    let candidates = [
+        r"C:\Windows\Fonts\msyh.ttc",      // Microsoft YaHei
+        r"C:\Windows\Fonts\msyhbd.ttc",
+        r"C:\Windows\Fonts\simhei.ttf",    // SimHei
+        r"C:\Windows\Fonts\simsun.ttc",    // SimSun
+        r"C:\Windows\Fonts\msjh.ttc",      // Microsoft JhengHei
+        r"C:\Windows\Fonts\seguiemj.ttf",  // Segoe UI Emoji
+        r"C:\Windows\Fonts\segoeui.ttf",
+    ];
+
+    let mut loaded = false;
+    for path in candidates {
+        if let Ok(data) = std::fs::read(path) {
+            let name = if path.contains("seguiemj") || path.contains("segoeui") {
+                "emoji_font"
+            } else {
+                "cjk_font"
+            };
+            fonts.font_data.insert(
+                name.to_owned(),
+                egui::FontData::from_owned(data),
+            );
+            // Prefer CJK font for proportional text
+            if name == "cjk_font" {
+                fonts
+                    .families
+                    .entry(egui::FontFamily::Proportional)
+                    .or_default()
+                    .insert(0, "cjk_font".to_owned());
+                fonts
+                    .families
+                    .entry(egui::FontFamily::Monospace)
+                    .or_default()
+                    .insert(0, "cjk_font".to_owned());
+                loaded = true;
+            }
+            if name == "emoji_font" {
+                // Put emoji font as fallback
+                fonts
+                    .families
+                    .entry(egui::FontFamily::Proportional)
+                    .or_default()
+                    .push("emoji_font".to_owned());
+            }
+        }
+    }
+
+    if loaded {
+        ctx.set_fonts(fonts);
+    }
+}
+
 fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
@@ -16,6 +72,7 @@ fn main() -> eframe::Result<()> {
         "File Seal",
         options,
         Box::new(|cc| {
+            setup_cjk_fonts(&cc.egui_ctx);
             let mut visuals = egui::Visuals::dark();
             visuals.window_rounding = 8.0.into();
             visuals.panel_fill = Color32::from_rgb(18, 18, 24);
