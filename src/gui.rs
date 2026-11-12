@@ -1,5 +1,7 @@
 //! file-seal GUI — desktop product with dashboard, drag-drop, batch ops.
 
+#![windows_subsystem = "windows"]
+
 use eframe::egui::{self, Color32, RichText};
 use file_seal::{self, SealError, SealRecord};
 use std::path::{Path, PathBuf};
