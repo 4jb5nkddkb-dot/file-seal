@@ -25,16 +25,14 @@ jobs:
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
 
-      - name: Check formatting (lib + main)
-        run: |
-          cargo fmt -- --check src/lib.rs src/main.rs || true
-          # GUI formatting can be fixed in follow-up; do not block CI
+      - name: Check formatting
+        run: cargo fmt --all -- --check
 
-      - name: Clippy (cli)
-        run: cargo clippy --bin file-seal --features cli -- -D warnings
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
 
-      - name: Run tests (cli)
-        run: cargo test --features cli --verbose
+      - name: Run tests
+        run: cargo test --verbose
 
       - name: Build release CLI
         run: cargo build --release --bin file-seal --features cli
