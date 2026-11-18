@@ -1,0 +1,167 @@
+name: Skill and Hash-Chain Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      require_hash_chain:
+        description: "Fail unless the hash-chain implementation and tests are present"
+        required: false
+        default: false
+        type: boolean
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+permissions:
+  contents: read
+
+jobs:
+  validate-skills:
+    name: Validate repository skills
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate SKILL.md files
+        shell: python
+        run: |
+          import re
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          raw = subprocess.check_output(
+              ["git", "ls-files", "*/SKILL.md", "SKILL.md"], text=True
+          )
+          paths = [Path(line) for line in raw.splitlines() if line.strip()]
+          if not paths:
+              print("No repository-local SKILL.md files found; nothing to validate.")
+              raise SystemExit(0)
+
+          errors = []
+          for path in paths:
+              text = path.read_text(encoding="utf-8")
+              lines = text.splitlines()
+              if len(lines) > 500:
+                  errors.append(f"{path}: SKILL.md has {len(lines)} lines; maximum is 500")
+              if not text.startswith("---\n"):
+                  errors.append(f"{path}: missing YAML frontmatter")
+                  continue
+              parts = text[4:].split("\n---\n", 1)
+              if len(parts) != 2:
+                  errors.append(f"{path}: malformed YAML frontmatter")
+                  continue
+              frontmatter = parts[0]
+              for key in ("name", "description"):
+                  matches = re.findall(rf"(?m)^{re.escape(key)}:\s*.+$", frontmatter)
+                  if len(matches) != 1:
+                      errors.append(f"{path}: expected exactly one non-empty {key} field")
+              if re.search(r"(?m)^\s*\[TODO:", text):
+                  errors.append(f"{path}: unresolved TODO placeholder")
+              name_match = re.search(r"(?m)^name:\s*([^\n#]+)", frontmatter)
+              if name_match and path.parent.name != name_match.group(1).strip().strip("\"'"):
+                  errors.append(
+                      f"{path}: directory name does not match frontmatter name "
+                      f"({name_match.group(1).strip()!r})"
+                  )
+
+          if errors:
+              print("\n".join(errors))
+              raise SystemExit(1)
+          for path in paths:
+              print(f"validated {path}")
+
+  rust-quality:
+    name: Rust format, lint, tests, and build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Run all tests
+        run: cargo test --all-features --verbose
+
+      - name: Build CLI
+        run: cargo build --release --bin file-seal --features cli
+
+  hash-chain:
+    name: Hash-chain contract and tamper tests
+    runs-on: ubuntu-latest
+    needs: rust-quality
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Inspect hash-chain implementation contract
+        env:
+          REQUIRE_HASH_CHAIN: ${{ inputs.require_hash_chain || 'false' }}
+        shell: python
+        run: |
+          import os
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          rust_files = [Path(p) for p in subprocess.check_output(
+              ["git", "ls-files", "*.rs"], text=True
+          ).splitlines() if p]
+          source = "\n".join(path.read_text(encoding="utf-8") for path in rust_files)
+          required_symbols = {
+              "ChainSealRecord": "versioned chain record type",
+              "verify_chain": "ledger chain verification API",
+              "prev_hash": "link to the previous record",
+              "record_hash": "hash of the current record",
+          }
+          missing = [name for name in required_symbols if name not in source]
+          test_markers = ("hash_chain", "chain", "tamper", "prev_hash", "record_hash")
+          has_chain_test = any(marker in source for marker in test_markers)
+          required = os.environ.get("REQUIRE_HASH_CHAIN", "false").lower() == "true"
+
+          if missing:
+              message = (
+                  "Hash-chain implementation not detected; expected symbols missing: "
+                  + ", ".join(missing)
+              )
+              if required:
+                  print("ERROR: " + message)
+                  raise SystemExit(1)
+              print("NOTICE: " + message)
+              print("NOTICE: Run workflow_dispatch with require_hash_chain=true after the refactor.")
+              raise SystemExit(0)
+
+          if not has_chain_test:
+              print("ERROR: hash-chain symbols exist, but no hash-chain test marker was found")
+              raise SystemExit(1)
+          print("Hash-chain implementation symbols and test markers detected.")
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run hash-chain tests
+        run: cargo test --all-features hash_chain -- --nocapture
+
+      - name: Run tamper-focused tests
+        run: cargo test --all-features tamper -- --nocapture
