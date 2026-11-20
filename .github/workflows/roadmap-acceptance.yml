@@ -1,0 +1,60 @@
+name: Roadmap Acceptance
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: "Roadmap stage to validate"
+        required: true
+        default: baseline
+        type: choice
+        options:
+          - baseline
+          - multi-ledger
+          - signing
+          - hardening
+          - release
+          - all
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  acceptance:
+    name: ${{ inputs.stage || 'baseline' }} acceptance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Check Python runtime
+        run: python3 --version
+
+      - name: Run roadmap acceptance checks
+        env:
+          ROADMAP_STAGE: ${{ inputs.stage || 'baseline' }}
+        shell: bash
+        run: |
+          set -o errexit -o nounset -o pipefail
+          mkdir -p acceptance-results
+          python3 scripts/roadmap_acceptance_check.py . \
+            --stage "$ROADMAP_STAGE" \
+            --json | tee "acceptance-results/${ROADMAP_STAGE}.json"
+
+      - name: Upload acceptance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: roadmap-acceptance-${{ inputs.stage || 'baseline' }}
+          path: acceptance-results/
+          if-no-files-found: warn
+          retention-days: 30
