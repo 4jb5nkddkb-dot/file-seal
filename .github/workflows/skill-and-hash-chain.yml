@@ -6,12 +6,6 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      require_hash_chain:
-        description: "Fail unless the hash-chain implementation and tests are present"
-        required: false
-        default: false
-        type: boolean
 
 env:
   CARGO_TERM_COLOR: always
@@ -113,13 +107,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Inspect hash-chain implementation contract
-        env:
-          REQUIRE_HASH_CHAIN: ${{ inputs.require_hash_chain || 'false' }}
         shell: python
         run: |
-          import os
           import subprocess
-          import sys
           from pathlib import Path
 
           rust_files = [Path(p) for p in subprocess.check_output(
@@ -127,15 +117,15 @@ jobs:
           ).splitlines() if p]
           source = "\n".join(path.read_text(encoding="utf-8") for path in rust_files)
           required_symbols = {
-              "ChainSealRecord": "versioned chain record type",
               "verify_chain": "ledger chain verification API",
               "prev_hash": "link to the previous record",
               "record_hash": "hash of the current record",
+              "compute_hash": "canonical record hashing API",
           }
           missing = [name for name in required_symbols if name not in source]
           test_markers = ("hash_chain", "chain", "tamper", "prev_hash", "record_hash")
           has_chain_test = any(marker in source for marker in test_markers)
-          required = os.environ.get("REQUIRE_HASH_CHAIN", "false").lower() == "true"
+          required = True
 
           if missing:
               message = (

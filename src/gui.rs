@@ -713,7 +713,7 @@ impl FileSealApp {
 • 所有封印只记录在本地账本，文件内容永不上传。\n\
 • 账本默认位置：系统数据目录 / file-seal / seals.jsonl\n\
 • 可指定任何路径作为独立保存位置。\n\
-• 验证时比对当前文件字节与账本中最新记录的 SHA-256。\n\
+• 验证时先检查整条哈希链，再比对当前文件字节与最新记录的 SHA-256。\n\
 • 支持拖放文件到窗口进行封印或验证。",
             )
             .small(),
@@ -722,7 +722,7 @@ impl FileSealApp {
         ui.add_space(24.0);
         ui.separator();
         ui.label(
-            RichText::new("File Seal v0.2.1  ·  MIT License  ·  本地优先")
+            RichText::new("File Seal v0.3.0  ·  MIT License  ·  本地优先")
                 .weak()
                 .small(),
         );

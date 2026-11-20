@@ -1,6 +1,6 @@
 [package]
 name = "file-seal"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2021"
 rust-version = "1.80"
 description = "Local file integrity seals: SHA-256 fingerprint + timestamp ledger. Desktop GUI product + CLI."
