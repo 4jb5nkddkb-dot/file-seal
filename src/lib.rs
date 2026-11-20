@@ -10,8 +10,7 @@ use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 /// The fixed parent hash for the first record in a ledger.
-pub const GENESIS_HASH: &str =
-    "0000000000000000000000000000000000000000000000000000000000000000";
+pub const GENESIS_HASH: &str = "0000000000000000000000000000000000000000000000000000000000000000";
 
 #[derive(Debug, Error)]
 pub enum SealError {
